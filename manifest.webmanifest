@@ -1,0 +1,13 @@
+{
+  "name": "Погода",
+  "short_name": "Погода",
+  "description": "Живий прогноз погоди: по годинах і на тиждень",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10223d",
+  "theme_color": "#1c63c4",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

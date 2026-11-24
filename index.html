@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1c63c4">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Погода з підказками міст і країн, прогнозом на 7 днів і по годинах. Українська, англійська, російська.">
+  <meta property="og:title" content="Погода">
+  <meta property="og:description" content="Живий прогноз погоди: по годинах, на тиждень, з опадами та анімованим небом.">
+  <meta property="og:type" content="website">
+  <title>Погода</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+  <link rel="preconnect" href="https://geocoding-api.open-meteo.com" crossorigin>
+  <link rel="preload" href="css/styles.css" as="style">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>document.documentElement.classList.add('js')</script>
+</head>
+<body data-sky="clear-day">
+
+  <!-- Спільні градієнти для всіх іконок погоди -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cfd9e6"/></linearGradient>
+      <linearGradient id="cd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8c2d0"/><stop offset="1" stop-color="#7d8aa0"/></linearGradient>
+      <radialGradient id="sg" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#fff3b0"/><stop offset="1" stop-color="#ffb62e"/></radialGradient>
+      <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    </defs>
+  </svg>
+
+  <div class="sky" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="moon"></div>
+    <div class="haze haze-a"></div>
+    <div class="haze haze-b"></div>
+    <div class="stars" id="stars"></div>
+    <div class="shooting" id="shooting"></div>
+    <div class="clouds" id="clouds"></div>
+    <div class="fogbands"><i></i><i></i><i></i></div>
+    <div class="precip" id="precip"></div>
+    <div class="lightning"></div>
+  </div>
+
+  <!-- Вибір мови при першому відкритті -->
+  <div class="lang-gate" id="langGate" hidden role="dialog" aria-modal="true" aria-labelledby="gateName">
+    <div class="lang-card glass">
+      <p class="gate-name" id="gateName" data-i18n="title">Погода</p>
+      <p class="lang-q" data-i18n="gateTitle">Оберіть мову</p>
+      <div class="lang-btns">
+        <button type="button" class="rip" data-lang="uk">Українська</button>
+        <button type="button" class="rip" data-lang="en">English</button>
+        <button type="button" class="rip" data-lang="ru">Русский</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="alert" aria-live="assertive" hidden>
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    <span id="toastText"></span>
+  </div>
+
+  <main class="app is-loading" id="app">
+
+    <header class="top" data-in style="--i:0">
+      <div class="bar-row">
+        <form class="search glass" id="searchForm" role="search" autocomplete="off">
+          <svg class="search-ico" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M11 19a8 8 0 100-16 8 8 0 000 16zm10 2l-4.3-4.3"/></svg>
+          <label class="sr-only" for="cityInput" data-i18n="searchLabel">Пошук міста або країни</label>
+          <input id="cityInput" name="q" type="text" maxlength="80" enterkeyhint="search" data-i18n-ph="searchPh" placeholder="Місто або «Країна, місто»">
+          <button type="button" class="icon-btn rip" id="geoBtn" data-i18n-aria="geo" aria-label="Моє місцезнаходження">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
+          </button>
+          <button type="submit" class="primary rip" id="searchBtn" data-i18n="searchBtn">Пошук</button>
+        </form>
+        <div class="lang-wrap" id="langWrap">
+          <button type="button" class="lang-chip glass rip" id="langBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="langMenu" data-i18n-aria="langLabel" aria-label="Мова інтерфейсу">UK</button>
+          <div class="lang-menu glass" id="langMenu" role="menu" hidden>
+            <button type="button" role="menuitemradio" data-lang="uk"><b>UK</b> Українська</button>
+            <button type="button" role="menuitemradio" data-lang="en"><b>EN</b> English</button>
+            <button type="button" role="menuitemradio" data-lang="ru"><b>RU</b> Русский</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="suggest glass" id="suggest">
+        <ul class="sg-list" id="sgList" aria-live="polite"></ul>
+        <button type="button" class="more rip" id="moreBtn" aria-expanded="false" hidden>
+          <svg class="chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          <span id="moreText"></span>
+        </button>
+      </div>
+
+      <div class="chips" id="chips"></div>
+    </header>
+
+    <section class="hero glass" id="hero" aria-labelledby="cityName" data-in style="--i:1">
+      <div class="hero-head">
+        <p class="when" id="when">&nbsp;</p>
+        <h1 id="cityName">&nbsp;</h1>
+        <p class="city-sub" id="citySub"></p>
+      </div>
+      <p class="temp" aria-live="polite"><span id="temp">–</span><span class="deg">°</span></p>
+      <div class="hero-foot">
+        <p class="desc" id="desc">&nbsp;</p>
+        <p class="range"><span data-i18n="max">Макс</span> <b id="hi">–</b>°&ensp;<span data-i18n="min">Мін</span> <b id="lo">–</b>°</p>
+        <p class="next" id="nextPrecip" hidden></p>
+      </div>
+      <div class="hero-icon" id="icon" aria-hidden="true"></div>
+      <button class="save rip" id="saveBtn" type="button" aria-pressed="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path class="star" d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9L3.5 9.7l5.9-.8L12 3.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span id="saveText">Зберегти</span>
+      </button>
+    </section>
+
+    <!-- Сьогодні по годинах + коли опади -->
+    <section class="hours glass" aria-labelledby="hoursTitle" data-in style="--i:2">
+      <div class="card-head">
+        <h2 id="hoursTitle">–</h2>
+        <p class="sub" data-i18n="precipTitle">Коли будуть опади</p>
+      </div>
+      <div class="pchips" id="pchips"></div>
+      <div class="hscroll" id="hscroll" tabindex="0" role="list"></div>
+    </section>
+
+    <!-- Прогноз на тиждень -->
+    <section class="week glass" aria-labelledby="weekTitle" data-in style="--i:3">
+      <div class="card-head"><h2 id="weekTitle" data-i18n="weekTitle">Прогноз на 7 днів</h2></div>
+      <div class="days" id="days"></div>
+    </section>
+
+    <!-- Картки з деталями -->
+    <section class="stats" id="stats" data-in style="--i:4">
+      <div class="stat glass" data-card="wind" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="wind">Вітер</h2>
+        <p class="val"><span id="wind">–</span><small data-i18n="unitWind">м/с</small></p>
+        <div class="viz compass" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-width="2"/><text x="24" y="10" text-anchor="middle" font-size="7" fill="currentColor" fill-opacity=".7">N</text><g id="arrow" style="transform-origin:24px 24px"><path d="M24 12l6 14h-12z" fill="currentColor"/><path d="M24 40l-4-9h8z" fill="currentColor" fill-opacity=".35"/></g></svg></div>
+        <p class="note" id="windNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="stat glass" data-card="hum" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="hum">Вологість</h2>
+        <p class="val"><span id="hum">–</span><small>%</small></p>
+        <div class="viz bar" aria-hidden="true"><i id="humBar"></i></div>
+        <p class="note" id="humNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="stat glass" data-card="pres" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="pres">Тиск</h2>
+        <p class="val"><span id="pres">–</span><small data-i18n="unitPres">мм рт. ст.</small></p>
+        <div class="viz bar gauge" aria-hidden="true"><i id="presDot"></i></div>
+        <p class="note" id="presNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="stat glass" data-card="feels" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="feels">Відчувається</h2>
+        <p class="val"><span id="feels">–</span><small class="tight">°</small></p>
+        <div class="viz bar" aria-hidden="true"><i id="feelsBar"></i></div>
+        <p class="note" id="feelsNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="stat glass" data-card="uv" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="uv">УФ-індекс</h2>
+        <p class="val"><span id="uv">–</span></p>
+        <div class="viz bar uvbar" aria-hidden="true"><i id="uvDot"></i></div>
+        <p class="note" id="uvNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+      <div class="stat glass" data-card="sun" role="button" tabindex="0" aria-haspopup="dialog">
+        <h2 data-i18n="sun">Сонце</h2>
+        <p class="val"><span id="sunVal">–</span><small id="sunLbl"></small></p>
+        <div class="viz bar" aria-hidden="true"><i id="sunBar"></i></div>
+        <p class="note" id="sunNote">–</p>
+        <span class="more-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg></span>
+      </div>
+    </section>
+
+    <section class="chart glass" aria-labelledby="chartTitle" data-in style="--i:5">
+      <div class="chart-head">
+        <h2 id="chartTitle" data-i18n="chartTitle">Температура та опади</h2>
+        <p class="readout" id="readout" aria-live="polite">&nbsp;</p>
+      </div>
+      <div class="chart-scroll">
+        <svg id="chart" viewBox="0 0 800 260" role="img" aria-label="Графік температури"></svg>
+      </div>
+    </section>
+
+    <footer class="foot" data-in style="--i:6">
+      <span data-i18n="footerBefore">Дані:</span> <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. <span data-i18n="footerAfter">Оновлюється автоматично.</span>
+      <span class="upd" id="updated"></span>
+    </footer>
+  </main>
+
+  <!-- Деталі картки -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-bg" data-close></div>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1">
+      <button type="button" class="sheet-x rip" data-close id="sheetX" aria-label="Закрити">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <h2 id="sheetTitle"></h2>
+      <div class="sheet-viz" id="sheetViz"></div>
+      <p class="sheet-big" id="sheetBig"></p>
+      <dl class="sheet-rows" id="sheetRows"></dl>
+      <p class="sheet-text" id="sheetText"></p>
+    </div>
+  </div>
+
+  <noscript><p style="position:fixed;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:24px">Для роботи сайту потрібен JavaScript.</p></noscript>
+
+  <script src="js/i18n.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
